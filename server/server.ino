@@ -121,83 +121,11 @@ void OnDataRecv(uint8_t *mac, uint8_t *incomingData, uint8_t len)
 	switch (myDataIn.type)
 	{
 	case MSG_TYPE_TRIGGERED:
-		if (menuItem == MENU_ITEM_PROGRAM_1)
-		{
-			handleTriggerProgram1(mac);
-		}
+		onTargetTriggered(mac);
+
 		break;
 	case MSG_TYPE_JOIN:
-		if (state == STATE_ALLOW_JOIN)
-		{
-			// check if target is already know
-			for (int i = 0; i < 10; i++)
-			{
-				bool found = true;
-				for (int j = 0; j < 6; j++)
-				{
-					if (joinedTargets[i][j] != mac[j])
-					{
-						found = false;
-					}
-				}
-
-				// if target is known, remove it so we can add it again
-				if (found)
-				{
-					for (int j = 0; j < 6; j++)
-					{
-						joinedTargets[i][j] = 0x00;
-					}
-				}
-			}
-
-			bool done = false;
-			// find first free slot and add target
-			for (int i = 0; i < 10; i++)
-			{
-				if (!done)
-				{
-					if (joinedTargets[i][0] == 0x00)
-					{
-						// for (int j = 0; j < 6; j++)
-						// {
-						// 	joinedTargets[i][j] = mac[j];
-						// }
-						memcpy(joinedTargets[i], mac, 6);
-						esp_now_add_peer(mac, ESP_NOW_ROLE_COMBO, 1, NULL, 0);
-
-						// TODO: replace delay for something non blocking
-						delay(50);
-
-						Serial.print("Target added at ");
-						Serial.println(i);
-
-						myDataOut.type = MSG_TYPE_JOINED;
-						esp_now_send(mac, (uint8_t *)&myDataOut, sizeof(myDataOut));
-						done = true;
-					}
-				}
-			}
-
-			// Serial.println("Mac table: ");
-			// for (int i = 0; i < 10; i++)
-			// {
-			// 	Serial.print(i);
-			// 	Serial.print(": ");
-
-			// 	Serial.print(joinedTargets[i][0]);
-			// 	Serial.print(":");
-			// 	Serial.print(joinedTargets[i][1]);
-			// 	Serial.print(":");
-			// 	Serial.print(joinedTargets[i][2]);
-			// 	Serial.print(":");
-			// 	Serial.print(joinedTargets[i][3]);
-			// 	Serial.print(":");
-			// 	Serial.print(joinedTargets[i][4]);
-			// 	Serial.print(":");
-			// 	Serial.println(joinedTargets[i][5]);
-			// }
-		}
+		onTargetJoin(mac);
 		break;
 	}
 }
@@ -610,8 +538,22 @@ void handleProgram1()
 	}
 }
 
-void handleTriggerProgram1(uint8_t *mac)
+void onTargetTriggered(uint8_t *mac)
 {
+	if (state == STATE_RUN_PROGRAM)
+	{
+		switch (menuItem)
+		{
+		case MENU_ITEM_PROGRAM_1:
+			onTargetTriggered_program1(mac);
+			break;
+		}
+	}
+}
+
+void onTargetTriggered_program1(uint8_t *mac)
+{
+
 	uint32_t responseTime = millis() - program1_armTime;
 	for (uint8_t i = 0; i < 10; i++)
 	{
@@ -667,5 +609,80 @@ void handleBleep()
 		digitalWrite(BLEEP_PIN, LOW);
 		bleepSoundUntil = 0;
 		bleepActive = false;
+	}
+}
+
+void onTargetJoin(uint8_t *mac)
+{
+	if (state == STATE_ALLOW_JOIN)
+	{
+		// check if target is already know
+		for (int i = 0; i < 10; i++)
+		{
+			bool found = true;
+			for (int j = 0; j < 6; j++)
+			{
+				if (joinedTargets[i][j] != mac[j])
+				{
+					found = false;
+				}
+			}
+
+			// if target is known, remove it so we can add it again
+			if (found)
+			{
+				for (int j = 0; j < 6; j++)
+				{
+					joinedTargets[i][j] = 0x00;
+				}
+			}
+		}
+
+		bool done = false;
+		// find first free slot and add target
+		for (int i = 0; i < 10; i++)
+		{
+			if (!done)
+			{
+				if (joinedTargets[i][0] == 0x00)
+				{
+					// for (int j = 0; j < 6; j++)
+					// {
+					// 	joinedTargets[i][j] = mac[j];
+					// }
+					memcpy(joinedTargets[i], mac, 6);
+					esp_now_add_peer(mac, ESP_NOW_ROLE_COMBO, 1, NULL, 0);
+
+					// TODO: replace delay for something non blocking
+					delay(50);
+
+					Serial.print("Target added at ");
+					Serial.println(i);
+
+					myDataOut.type = MSG_TYPE_JOINED;
+					esp_now_send(mac, (uint8_t *)&myDataOut, sizeof(myDataOut));
+					done = true;
+				}
+			}
+		}
+
+		// Serial.println("Mac table: ");
+		// for (int i = 0; i < 10; i++)
+		// {
+		// 	Serial.print(i);
+		// 	Serial.print(": ");
+
+		// 	Serial.print(joinedTargets[i][0]);
+		// 	Serial.print(":");
+		// 	Serial.print(joinedTargets[i][1]);
+		// 	Serial.print(":");
+		// 	Serial.print(joinedTargets[i][2]);
+		// 	Serial.print(":");
+		// 	Serial.print(joinedTargets[i][3]);
+		// 	Serial.print(":");
+		// 	Serial.print(joinedTargets[i][4]);
+		// 	Serial.print(":");
+		// 	Serial.println(joinedTargets[i][5]);
+		// }
 	}
 }
